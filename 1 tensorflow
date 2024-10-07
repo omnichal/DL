@@ -1,0 +1,43 @@
+import tensorflow as tf
+import numpy as np
+
+a=tf.constant(15)
+b=tf.constant(20)
+c = a+b # tensor 
+print(type(c))
+print(a+b)
+
+# generate random numpy array 
+x= np.random.rand(100).astype(np.float32)
+print(type(x))
+print(x)
+
+x = np.random.rand(100).astype(np.float32)
+# print(x)
+
+# output - observed
+y = x * 0.2 + 0.2
+print(f"Y = {y}")
+# Weight
+W = tf.Variable(tf.random.normal([1]))
+print(f"Weight(W) ==> {W}")
+# bias
+b = tf.Variable(tf.zeros([1]))
+print(f"bias(b) ==> {b}")
+
+# Create a function for MSE - mean squared error
+# error =  (Ypredicted - Yactual) 
+def mse_loss():
+ ypred = W * x + b
+ print(f"Ypredicted = {ypred}")
+ loss = tf.reduce_mean(tf.square(ypred-y))
+ return loss
+
+# Optimizer
+optimizer = tf.keras.optimizers.legacy.Adam()
+
+# Iterations
+for step in range(5000):
+ optimizer.minimize(mse_loss,var_list=[W,b])
+ if step % 500 == 0:
+  print(step, W.numpy(), b.numpy())
