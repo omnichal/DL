@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-
+---------------------------------------------
 # Tensor Initialization
 ### multiple ways
 ### 1 - using data
