@@ -1,0 +1,99 @@
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+ from tensorflow.keras import layers, models
+ import matplotlib.pyplot as plt
+ ---------------------------------------------------------
+ # Define paths to your dataset
+ train_data_dir = 'C:/Users/Mrinmayee/Downloads/Brain tumor'
+ test_data_dir = 'C:/Users/Mrinmayee/Downloads/Brain tumor'
+ -------------------------------------------------------------
+ # Set image dimensions and batch size
+ img_width, img_height = 150, 150
+ batch_size = 32
+ ----------------------------------------------------
+ # Create data generators for training and testing
+ train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True
+ )
+ ------------------------------------------------------
+ test_datagen = ImageDataGenerator(rescale=1./255)
+ --------------------------------------------------------
+ train_generator = train_datagen.flow_from_directory(
+    train_data_dir,
+    target_size=(img_width, img_height),
+    batch_size=batch_size,
+    class_mode='binary'
+ )
+ ----------------------------------------------------------
+ test_generator = test_datagen.flow_from_directory(
+    test_data_dir,
+    target_size=(img_width, img_height),
+    batch_size=batch_size,
+    class_mode='binary'
+ )
+ ---------------------------------------------------------
+ # Build the CNN model
+ model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(img_width, img_height, 3)),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dense(1, activation='sigmoid')  # Binary classification (tumor or not)
+ ])
+ ----------------------------------------------------------------------
+ # Compile the model
+ model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+ ------------------------------------------------------------------------
+ # Display the model summary
+ model.summary()
+ -------------------------------------------------------------
+  # Train the model
+ history = model.fit(train_generator, epochs=10, validation_data=test_generator)
+ ------------------------------------------------------------
+ # Evaluate the model
+ test_loss, test_acc = model.evaluate(test_generator)
+ print(f"\nTest Accuracy: {test_acc * 100:.2f}%")
+ --------------------------------------------------------------
+ # Plot training history
+ plt.plot(history.history['accuracy'], label='Train Accuracy')
+ plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+ plt.xlabel('Epoch')
+ plt.ylabel('Accuracy')
+ plt.legend()
+ plt.show()
+ ----------------------------------------------------------------
+  import numpy as np
+ import os
+ ---------------------------------------------------------------
+ # Choose a specific image to plot
+ image_index = 0
+ -------------------------------------------------------------
+ # Get class labels
+ class_labels = list(test_generator.class_indices.keys())
+ -------------------------------------------------------------
+ # Reset the test generator to the beginning
+ test_generator.reset()
+ ------------------------------------------------------
+ # Generate predictions for the test set
+  predictions = model.predict(test_generator)
+---------------------------------------------------------------
+ # Get the true label, filename, and predicted probabilities for the chosen image
+ true_label = class_labels[test_generator.classes[image_index]]
+ filename = test_generator.filenames[image_index]
+ predicted_probabilities = predictions[image_index]
+ ---------------------------------------------------------------
+ # Load and plot the image
+ img_path = os.path.join(test_data_dir, filename)
+ img = plt.imread(img_path)
+ -------------------------------------------------------------------
+ # Plot the image along with true label and predicted probabilities
+ plt.imshow(img)
+ plt.title(f'True: {true_label}\nPredicted Probabilities: {predicted_probabilities}')
+ plt.axis('off')
+ plt.show()
