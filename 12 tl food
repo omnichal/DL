@@ -1,0 +1,100 @@
+ import tensorflow as tf
+ from tensorflow import keras
+ from tensorflow.keras import layers
+ from tensorflow.keras.preprocessing import image
+ from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2,␣
+ ↪preprocess_input, decode_predictions
+ import numpy as np
+ import matplotlib.pyplot as plt
+ from tensorflow.keras.preprocessing.image import ImageDataGenerator
+ ----------------------------------------------
+ train_data_dir = 'new/train'
+ validation_data_dir = 'new/val'
+ ----------------------------------------
+ # Use your dataset loading and preprocessing logic here
+ # For example, using the ImageDataGenerator for data augmentation
+ datagen = keras.preprocessing.image.ImageDataGenerator(
+ preprocessing_function=preprocess_input,
+ validation_split=0.5
+ )
+ train_generator = datagen.flow_from_directory(
+ train_data_dir,
+ target_size=(224, 224),
+ batch_size=32,
+ class_mode='categorical',
+ subset='training'
+ )
+ validation_generator = datagen.flow_from_directory(
+ validation_data_dir,
+ target_size=(224, 224),
+ batch_size=32,
+ class_mode='categorical',
+ subset='validation'
+ )
+ -------------------------------------------
+ # Create the base model (MobileNetV2)
+ base_model = tf.keras.applications.MobileNetV2(
+ input_shape=(224, 224, 3),
+ include_top=False,
+ weights='imagenet'
+ )
+ # Freeze the layers of the base model
+ for layer in base_model.layers:
+ layer.trainable = False
+ -----------------------------------------------
+ # Create the custom model on top of the base model
+ model = keras.Sequential([
+ base_model,
+ layers.GlobalAveragePooling2D(),
+ layers.Dense(1024, activation='relu'),
+ layers.Dropout(0.5),
+ layers.Dense(2, activation='softmax') # Two classes: burger and pizza
+ ])
+ ------------------------------------------
+  model.compile(optimizer='adam', loss='categorical_crossentropy',␣
+ ↪metrics=['accuracy'])
+ -------------------------------------------------------
+  # Train the model
+ history = model.fit(
+ train_generator,
+ epochs=10,
+ validation_data=validation_generator
+ )
+ ----------------------------------------------------
+  import cv2
+ import numpy as np
+ from tensorflow.keras.preprocessing import image
+ from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+ def detect_and_display_object(model, img_path):
+ # Load and preprocess the input image
+ img = image.load_img(img_path, target_size=(224, 224))
+ img_array = image.img_to_array(img)
+ img_array = np.expand_dims(img_array, axis=0)
+ img_array = preprocess_input(img_array)
+ # Make predictions using the model
+ predictions = model.predict(img_array)
+ print(f"Class: {class_label}, Confidence: {confidence}")
+ # Extract the predicted class label
+ class_label = 'burger' if predictions[0][0] > predictions[0][1] else 'pizza'
+ confidence = max(predictions[0])
+ # Load the original image using OpenCV for display
+ img_cv2 = cv2.imread(img_path)
+ img_cv2 = cv2.cvtColor(img_cv2, cv2.COLOR_BGR2RGB)
+ # Draw the bounding box and class label on the image
+ font = cv2.FONT_HERSHEY_SIMPLEX
+ font_scale = 1
+ font_thickness = 2
+ box_color = (0, 255, 0) # Green color for the bounding box
+ cv2.putText(img_cv2, f"Class: {class_label}", (10, 30), font, font_scale,␣
+ ↪(255, 255, 255), font_thickness, cv2.LINE_AA)
+ cv2.putText(img_cv2, f"Confidence: {confidence:.2f}", (10, 60), font,␣
+ ↪font_scale, (255, 255, 255), font_thickness, cv2.LINE_AA)
+ # Display the image with OpenCV
+ cv2.imshow('Object Detection', img_cv2)
+ cv2.waitKey(0)
+ cv2.destroyAllWindows()
+ # Example usage
+ random_img_path = 'BI681/test/1.jpg'
+ detect_and_display_object(model, random_img_path)
+ ---------------------------------------------------
+ 
