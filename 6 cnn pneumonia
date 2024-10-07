@@ -1,0 +1,107 @@
+import os
+ import shutil
+ import random
+ # Set the path to your dataset containing different folders
+ dataset_path = "dataset"
+ # Set the ratio for the validation set (e.g., 0.2 for 20% validation)
+ validation_ratio = 0.2
+ # Set the path where you want to create the train and validation directories
+ output_path = "BI68"
+ # Create the output directory if it doesn't exist
+ os.makedirs(output_path, exist_ok=True)
+ # List all folders in the dataset directory
+ folders = [f for f in os.listdir(dataset_path) if os.path.isdir(os.path.
+ ↪join(dataset_path, f))]
+ # Create train and validation subdirectories
+ train_dir = os.path.join(output_path, "train")
+ val_dir = os.path.join(output_path, "val")
+ os.makedirs(train_dir, exist_ok=True)
+ os.makedirs(val_dir, exist_ok=True)
+ # Iterate through each folder and divide the data
+ for folder in folders:
+ folder_path = os.path.join(dataset_path, folder)
+ files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.
+ ↪join(folder_path, f))]
+ random.shuffle(files)
+ # Calculate the split point based on the validation ratio
+ split_point = int(len(files) * validation_ratio)
+ # Split files into train and validation sets
+ train_files = files[split_point:]
+ val_files = files[:split_point]
+ # Copy files to train directory
+ for file in train_files:
+ src_path = os.path.join(folder_path, file)
+ dest_path = os.path.join(train_dir, folder, file)
+ os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+ shutil.copy(src_path, dest_path)
+ # Copy files to validation directory
+ for file in val_files:
+ src_path = os.path.join(folder_path, file)
+ dest_path = os.path.join(val_dir, folder, file)
+ os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+ shutil.copy(src_path, dest_path)
+ print("Dataset division into train and validation sets is complete.")
+ --------------------------------------------------------
+  import tensorflow as tf
+ from tensorflow.keras import layers, models
+ from tensorflow.keras.preprocessing.image import ImageDataGenerator
+ import matplotlib.pyplot as plt
+ ------------------------------------------------------
+  train_data_dir = 'BI68/train'
+ test_data_dir = 'BI68/val'
+ ----------------------------------------------------
+  train_datagen = ImageDataGenerator(rescale=1./255,
+ shear_range=0.2,
+ zoom_range=0.2,
+ horizontal_flip=True)
+ test_datagen = ImageDataGenerator(rescale=1./255)
+ # Create generators for training and testing datasets
+ train_generator = train_datagen.flow_from_directory(
+ train_data_dir,
+ target_size=(150, 150),
+ batch_size=32,
+ class_mode='binary'
+ )
+ test_generator = test_datagen.flow_from_directory(
+ test_data_dir,
+ target_size=(150, 150),
+ batch_size=32,
+ class_mode='binary'
+ )
+ --------------------------------------------------
+  model = models.Sequential()
+ model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(150, 150,␣
+ ↪3)))
+ model.add(layers.MaxPooling2D((2, 2)))
+ model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+ model.add(layers.MaxPooling2D((2, 2)))
+ model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+ model.add(layers.MaxPooling2D((2, 2)))
+ model.add(layers.Flatten())
+ model.add(layers.Dense(512, activation='relu'))
+ model.add(layers.Dense(1, activation='sigmoid'))
+ -----------------------------------------------------
+  model.compile(optimizer='adam',
+ loss='binary_crossentropy',
+ metrics=['accuracy'])
+ ---------------------------------------
+ model.fit(train_generator, epochs=10, validation_data=test_generator)
+ -----------------------------------------
+  test_loss, test_acc = model.evaluate(test_generator)
+ print(f'Test accuracy: {test_acc}')
+ ----------------------------------------------
+  sample_images, sample_labels = next(test_generator)
+ predictions = model.predict(sample_images)
+ -------------------------------------------------
+  predicted_labels = [1 if p > 0.5 else 0 for p in predictions]
+  ----------------------------------------------------
+   for i in range(5):
+ true_label = "NORMAL" if sample_labels[i] == 0 else "PNEUMONIA"
+ predicted_label = "NORMAL" if predicted_labels[i] == 0 else "PNEUMONIA"
+ # Display the image
+ plt.imshow(sample_images[i])
+ plt.title(f"True Label: {true_label}, Predicted Label: {predicted_label}")
+ plt.show()
+ ----------------------------------------------------
+ 
+ 
