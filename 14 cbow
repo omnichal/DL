@@ -1,0 +1,183 @@
+import pandas as pd
+import numpy as np
+import collections
+import re
+------------------------
+f=open("text.txt")
+doc1=f.read()
+f.close()
+--------------------------
+doc1
+--------------------------
+l_doc1 = re.sub(r"[^a-zA-Z0-9]", " ", doc1.lower()).split()
+l_doc1
+---------------------------
+l=l_doc1
+l
+-----------------------------
+wordset=set(l)
+wordset
+----------------------------
+def calculateBOW(wordset,l_doc):
+  tf_diz = dict.fromkeys(wordset,0)
+  for word in l_doc:
+      tf_diz[word]=l_doc.count(word)
+  return tf_diz
+  ----------------------------------
+  bow1 = calculateBOW(wordset,l_doc1)
+df_bow = pd.DataFrame([bow1])
+df_bow.head()
+--------------------------------
+from sklearn.feature_extraction.text import CountVectorizer
+vectorizer = CountVectorizer()
+-------------------------------------
+X = vectorizer.fit_transform([doc1])
+df_bow_sklearn = pd.DataFrame(X.toarray(),columns=vectorizer.get_feature_names_out())
+df_bow_sklearn.head()
+--------------------------------------
+print(vectorizer.get_feature_names_out())
+-----------------------------------------
+import nltk
+nltk.download('punkt')
+import re
+import numpy as np
+---------------------------------------------
+f= open("text.txt")
+text=f.read()
+f.close()
+dataset = nltk.sent_tokenize(text)
+for i in range(len(dataset)):
+    dataset[i] = dataset[i].lower()
+    dataset[i] = re.sub(r'\W', ' ', dataset[i])
+    dataset[i] = re.sub(r'\s+', ' ', dataset[i])
+------------------------------------------------------
+print(dataset)
+--------------------------------------------
+word2count = {}
+for data in dataset:
+    words = nltk.word_tokenize(data)
+    for word in words:
+        if word not in word2count.keys():
+            word2count[word] = 1
+        else:
+            word2count[word] += 1
+---------------------------------------
+word2count
+---------------------------------------
+words
+---------------------------------------
+len(words)
+-----------------------------------------
+vocab_size = len(wordset)
+embed_dim = 10
+context_size = 4
+---------------------------------------
+word_to_ix = {word: i for i, word in enumerate(wordset)}
+ix_to_word = {i: word for i, word in enumerate(wordset)}
+-----------------------------------------
+word_to_ix
+------------------------------------------
+ix_to_word
+------------------------------------------
+data = []
+for i in range(2, len(words) - 2):
+    context = [words[i - 2], words[i - 1], words[i + 1], words[i + 2]]
+    target = words[i]
+    data.append((context, target))
+print(data[:5])
+--------------------------------------------
+embeddings =  np.random.random_sample((vocab_size, embed_dim))
+embeddings
+------------------------------------------
+def linear(m, theta):
+    w = theta
+    return m.dot(w)
+-----------------------------------------
+def log_softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return np.log(e_x / e_x.sum())
+def NLLLoss(logs, targets):
+    out = logs[range(len(targets)), targets]
+    return -out.sum()/len(out)
+----------------------------------
+import tensorflow as tf
+import keras.backend as k
+from keras.models import Sequential
+from keras.layers import Dense, Embedding, Lambda
+------------------------------------
+def log_softmax_crossentropy_with_logits(logits,target):
+
+    out = np.zeros_like(logits)
+    out[np.arange(len(logits)),target] = 1
+
+    softmax = np.exp(logits) / np.exp(logits).sum(axis=-1,keepdims=True)
+
+    return (- out + softmax) / logits.shape[0]
+-----------------------------------------
+def forward(context_idxs, theta):
+    m = embeddings[context_idxs].reshape(1, -1)
+    n = linear(m, theta)
+    o = log_softmax(n)
+
+    return m, n, o
+-------------------------------------------
+def backward(preds, theta, target_idxs):
+    m, n, o = preds
+
+    dlog = log_softmax_crossentropy_with_logits(n, target_idxs)
+    dw = m.T.dot(dlog)
+
+    return dw
+---------------------------------------------
+def optimize(theta, grad, lr=0.03):
+    theta -= grad * lr
+    return theta
+-------------------------------------------
+theta = np.random.uniform(-1, 1, ( context_size * embed_dim, vocab_size))
+-----------------------------------------
+epoch_losses = {}
+
+for epoch in range(80):
+
+    losses =  []
+
+    for context, target in data:
+        context_idxs = np.array([word_to_ix[w] for w in context])
+        preds = forward(context_idxs, theta)
+
+        target_idxs = np.array([word_to_ix[target]])
+        loss = NLLLoss(preds[-1], target_idxs)
+
+        losses.append(loss)
+
+        grad = backward(preds, theta, target_idxs)
+        theta = optimize(theta, grad, lr=0.03)
+
+        epoch_losses[epoch] = losses
+  -----------------------------------------------
+  import matplotlib.pyplot as plt
+ix = np.arange(0,80)
+
+fig = plt.figure()
+fig.suptitle('Epoch/Losses', fontsize=20)
+plt.plot(ix,[epoch_losses[i][0] for i in ix])
+plt.xlabel('Epochs', fontsize=12)
+plt.ylabel('Losses', fontsize=12)
+----------------------------------------------
+def predict(words):
+    context_idxs = np.array([word_to_ix[w] for w in words])
+    preds = forward(context_idxs, theta)
+    word = ix_to_word[np.argmax(preds[-1])]
+
+    return word
+predict(['it', 'was', 'best', 'of'])
+------------------------------------------------
+def accuracy():
+    wrong = 0
+
+    for context, target in data:
+        if(predict(context) != target):
+            wrong += 1
+
+    return (1 - (wrong / len(data)))
+accuracy()
