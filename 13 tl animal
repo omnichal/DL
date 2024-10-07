@@ -1,0 +1,97 @@
+import tensorflow as tf
+ from tensorflow.keras.preprocessing import image
+ from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2,␣
+ ↪preprocess_input, decode_predictions
+ from tensorflow.keras.models import Model
+ from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
+ ----------------------------------------------------
+ # Define the number of classes in your dataset
+ num_classes = 2 # Change this according to the number of classes in your␣
+ ↪dataset
+ # Load MobileNetV2 base model pre-trained on ImageNet data
+ base_model = MobileNetV2(weights='imagenet', include_top=False)
+ # Freeze the layers of the base model
+ for layer in base_model.layers:
+ layer.trainable = False
+ # Create a custom model on top of the base model
+ x = base_model.output
+ x = GlobalAveragePooling2D()(x)
+ x = Dense(1024, activation='relu')(x)
+ x = tf.keras.layers.Dropout(0.5)(x)
+ predictions = Dense(num_classes, activation='softmax')(x)
+ model = Model(inputs=base_model.input, outputs=predictions)
+ # Compile the model
+ model.compile(optimizer='adam', loss='categorical_crossentropy',␣
+ ↪metrics=['accuracy'])
+ -----------------------------------------------------
+  datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+ rescale=1./255,
+ shear_range=0.2,
+ zoom_range=0.2,
+ horizontal_flip=True,
+ validation_split=0.2 # 20% of the data will be used for validation
+ )
+ ---------------------------------------------------
+ # Specify the path to your animal dataset
+ train_data_dir = 'cats_and_dogs_filtered/cats_and_dogs_filtered/train'
+ validation_data_dir = 'cats_and_dogs_filtered/cats_and_dogs_filtered/validation'
+ # Generate training dataset
+ train_generator = datagen.flow_from_directory(
+ train_data_dir,
+ target_size=(224, 224),
+ batch_size=32,
+ class_mode='categorical',
+ subset='training',
+ )
+ # Generate validation dataset
+ validation_generator = datagen.flow_from_directory(
+ validation_data_dir,
+ target_size=(224, 224),
+ batch_size=32,
+ class_mode='categorical',
+ subset='validation',
+ )
+ --------------------------------------------
+ # Train the model
+ history = model.fit(
+ train_generator,
+ epochs=10,
+ validation_data=validation_generator
+ )
+ ---------------------------------------------
+  # Specify the path to your test dataset
+ test_data_dir = 'cats_and_dogs_filtered/cats_and_dogs_filtered/test'
+ # Use ImageDataGenerator for normalization
+ test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255)
+ # Generate test dataset
+ test_generator = test_datagen.flow_from_directory(
+ test_data_dir,
+ target_size=(224, 224),
+ batch_size=32,
+ class_mode=None,
+ shuffle=False
+ )
+ # Make predictions on the test set
+ predictions = model.predict(test_generator)
+ # Decode the true labels and predicted labels
+ true_labels = test_generator.classes
+ predicted_labels = np.argmax(predictions, axis=1)
+ print("True Labels:", true_labels) # Print the true labels for the first 10␣
+ ↪images
+ print("Predicted Labels:", predicted_labels) # Print the predicted labels for␣
+ ↪the first 10 images
+ # Display the images along with true and predicted labels for all images in the␣
+ ↪test dataset
+ for i in range(len(true_labels)):
+ img_path = test_generator.filepaths[i]
+ img = image.load_img(img_path, target_size=(224, 224))
+ img_array = image.img_to_array(img)
+ # Display the image
+ plt.imshow(img_array / 255.0)
+ plt.axis('off')
+ plt.show()
+ # Display true and predicted labels
+ true_label = 'cat' if true_labels[i] == 0 else 'dog'
+ predicted_label = 'cat' if predicted_labels[i] == 0 else 'dog'
+ print(f"Image {i+1}: True Label- {true_label}, Predicted Label-␣
+ ↪{predicted_label}")
