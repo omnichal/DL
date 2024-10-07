@@ -1,0 +1,135 @@
+# import all the above libraries
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from tensorflow import keras
+import matplotlib.pyplot as plt
+import random
+--------------------
+# read dataset 
+"""
+or you can use this if you have downloaded the dataset locally
+NOTE : if you have mnist_784.csv : 
+       in this dataset image are represented in as 1d array . 
+       you need to reshape this into ( 28, 28 )
+
+1. df = pd.read_csv('mnist_784_csv.csv')
+
+2. x=df.drop(['class'], axis=1)
+   y=df['class'].values
+
+3. x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=None)
+
+4. image_shape = (28,28)
+
+5.  BUILD : the model using keras.Sequential()
+
+    model = keras.Sequential([
+     keras.layers.Flatten(input_shape=(784,)),
+     keras.layers.Dense(256,activation='relu'),
+     keras.layers.Dense(128,activation='relu'),
+     keras.layers.Dense(32,activation='relu'),
+     keras.layers.Dense(10,activation='softmax')
+    ])
+
+6.  COMPILE :  
+    
+    model.compile(optimizer='sgd', loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+
+7.  TRAIN : using train dataset x_train , y_train 
+    
+    history = model.fit(x_train, y_train, epochs=10)
+
+    // history object have keys : loss , accuracy : these are w.r.t training data  
+    //                            val_loss , val_accuracy : these are w.r.t to testing data
+    
+8.  TEST : test the model using model.evaluate(x_test, y_test)
+    
+    test_loss, test_accuracy = model.evaluate(x_test,y_test)
+
+9.  Reshape the test data : since we want to plot to 2d 
+    x_test_img = x_test.to_numpy().reshape(x_test.shape[0],28,28)
+    plt.imshow(x_test_img[0])
+
+10. PREDICT : from the random test value we will predict using the model.predict
+    n=random.randint(0,500)
+    plt.imshow(x_test_img[n])
+    predicted_value = model.predict(x_test)
+    print(np.argmax(predicted_value[n]))
+
+11. PLOT THE graph loss and accuracy : training data 
+    plt.plot(history.history['loss'],label='loss',color='g')
+    plt.plot(history.history['accuracy'],label='accuracy',color='b')
+    plt.legend()
+    plt.show()
+
+CONCLUSION: AS MODEL EPOCHS INCREASES , MODEL ACCURACY INCREASE AND LOSS DECREASES. 
+
+"""
+mnist = tf.keras.datasets.mnist
+
+# split into train and test 
+(x_train, y_train), (x_test,y_test) = mnist.load_data()
+---------------------------------------
+# describe dataset 
+print("length of training dataset : {0} and dimension of dataset {1} ".format(len(x_train),x_train.shape)) 
+print("length of testing dataset : {0} and dimension of dataset {1} ".format(len(x_test),x_test.shape)) 
+----------------------------------
+# check the first image 
+print(x_train[0])
+----------------------------
+plt.matshow(x_train[0])
+-----------------------
+# normalising the data 
+x_train = x_train /255 
+x_test = x_test /255
+-----------------------
+# create model 
+model = keras.Sequential([
+     keras.layers.Flatten(input_shape=(28,28)), # reshaping data from 2d to 1d 
+     keras.layers.Dense(128,activation='relu'),
+     keras.layers.Dense(10,activation='softmax')
+    ])
+------------------------
+model = keras.Sequential([
+ keras.layers.Flatten(input_shape=(28,28)), # first layer is the input layer where we are feeding the image. Flatten: we are reshaping the data from 2d to 1d.     
+  # dense layer : ensure that each neuron in the previous layer is connected to the each neuron to the next layer.
+ keras.layers.Dense(128,activation='relu'), # dense layer 
+ keras.layers.Dense(10,activation='softmax') # output layer. 
+])
+-----------------------------
+model.compile(optimizer='sgd',
+ loss="sparse_categorical_crossentropy",
+ metrics=["accuracy"])
+-------------------------
+# train the model 
+history = model.fit(x_train , y_train, validation_data=(x_test,y_test),epochs = 10)
+---------------------------------
+# evaluate the model 
+test_loss , test_acc = model.evaluate(x_test,y_test)
+print(f"Loss : {test_loss}")
+print(f"Accuracy: {test_acc}")
+------------------------------
+# make prediction on new data 
+n = random.randint(0,9999) # choose the random value from the testing data 
+print("value of n : {}".format(n))
+plt.imshow(x_test[n]) # this is the random test image 
+plt.show()
+----------------------------
+# predict the model using testing data  
+predicted_value = model.predict(x_test)
+# print("Predicted value array : {0}".format(predicted_value))
+print("Handwritten number : %d" %np.argmax(predicted_value[n]))
+-----------------------------
+# plot the graph 
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Training Loss and accuracy')
+plt.ylabel('accuracy/Loss')
+plt.xlabel('epoch')
+plt.legend(['accuracy', 'val_accuracy','loss','val_loss'])
+plt.show()
+#------------------------- done ---------------------------
