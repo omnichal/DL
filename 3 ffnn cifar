@@ -1,0 +1,126 @@
+# import all the above libraries
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+from tensorflow import keras
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Flatten
+from keras.utils import to_categorical
+import matplotlib.pyplot as plt
+import random
+------------------------------------
+cifar = tf.keras.datasets.cifar10
+(x_train, y_train), (x_test,y_test) = cifar.load_data()
+print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
+-----------------------------------
+# Reduce pixel values
+x_train, x_test = x_train / 255.0, x_test / 255.0
+------------------------------------
+# normalise 
+plt.matshow(x_train[0])
+-----------------------------------
+# flatten the label values
+y_train, y_test = y_train.flatten(), y_test.flatten()
+-----------------------------------
+fig, ax = plt.subplots(5, 5)
+k = 0
+ 
+for i in range(5):
+    for j in range(5):
+        ax[i][j].imshow(x_train[k], aspect='auto')
+        k += 1
+ 
+plt.show()
+------------------------------------
+# x_train.shape
+# print(x_train.shape[1:]) # it have 3 colors 
+
+# x_train = x_train.reshape((x_train.shape[0], 3072))
+# x_test = x_test.reshape((x_test.shape[0], 3072))
+
+# print(x_train.shape)
+-----------------------------------
+# y_train = to_categorical(y_train, num_classes=10)
+# # y_test = to_categorical(y_test, num_classes=10)
+# print(y_train[0])
+----------------------------------
+# model = keras.Sequential([
+#      keras.layers.Dense(1024, input_shape=(3072,), activation="relu"), # reshaping data from 2d to 1d 
+#      keras.layers.Dense(256,activation='relu'),
+#      keras.layers.Dense(128,activation='relu'),
+#     keras.layers.Dense(10,activation='softmax')
+#     ])
+
+# model = Sequential()
+# model.add(Dense(1024, input_shape=(3072,), activation="relu"))
+# model.add(Dense(512, activation="relu"))
+# model.add(Dense(10, activation="softmax"))
+
+model = Sequential([
+    Flatten(input_shape=(32, 32, 3)),  # Flatten the input
+    Dense(512, activation='relu'),    # Hidden layer with 512 neurons and ReLU activation
+    Dense(256, activation='relu'),    # Hidden layer with 256 neurons and ReLU activation
+    Dense(128, activation='relu'),    # Hidden layer with 128 neurons and ReLU activation
+    Dense(10, activation='softmax')   # Output layer with 10 neurons for 10 classes (softmax for probabilities)
+])
+----------------------------------------
+# Compile the model
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+------------------------------------------
+history = model.fit(x_train, y_train, epochs=30, batch_size=64, validation_data=(x_test, y_test))
+-------------------------------------
+"""
+METHOD 2 : 
+
+# Load train and test data from CSV files
+train_data = pd.read_csv('train.csv')
+test_data = pd.read_csv('test.csv')
+
+x_train = train_data.drop('label', axis=1)
+y_train = train_data['label']
+
+x_test = test_data # Test data doesn't have labels
+
+# Normalize the data to range [0, 1]
+x_train = x_train / 255.0
+x_test = x_test / 255.0
+
+# Convert labels to categorical (one-hot encoded) representation
+num_classes = len(np.unique(y_train))
+y_train = to_categorical(y_train, num_classes=num_classes)
+
+# Split training data further into train and validation sets
+x_train, x_test , y_train, y_test = train_test_split(x_train, y_train, test_size=0.1, random_state=None)
+
+# model 
+model = Sequential()
+model.add(Flatten(input_shape=X_train.shape[1:])) # Flatten the input
+# Add hidden layers
+model.add(Dense(256, activation='relu'))
+model.add(Dense(128, activation='relu'))
+# Output layer with softmax activation for classification
+model.add(Dense(num_classes, activation='softmax'))
+
+# compile the model 
+# since we have dataset divided into classes therefore we have used categorical crossentropy
+model.compile(loss='categorical_crossentropy', optimizer='adam',metrics=['accuracy'])
+
+# train 
+history = model.fit(x_train, y_train, epochs=10, batch_size=32,validation_data=(x_test, y_test))
+
+# Make predictions on test data
+predictions = model.predict(x_test)
+
+# plot 
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+"""
