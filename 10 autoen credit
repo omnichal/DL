@@ -1,0 +1,94 @@
+import tensorflow as tf
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.models import Model
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, precision_score, recall_score,f1_score
+----------------------------------------------------------
+df=pd.read_csv('/Users/poorvadityabehre/Desktop/College/DL_FINAL/creditcard.csv')
+df.head()
+----------------------------------------------------------
+# Drop the 'Time' column as it is not relevant for this example
+df = df.drop(['Time'], axis=1)
+
+# Standardize the 'Amount' column
+df['Amount'] = StandardScaler().fit_transform(df['Amount'].values.reshape(-1,1))
+----------------------------------------------------------
+# Count the occurrences of each unique class in the 'Class' column
+count_classes = pd.Series(df['Class']).value_counts(sort=True)
+
+# Create a pie chart
+count_classes.plot(kind='pie', rot=0)
+
+# Set x-axis ticks to match the unique classes
+plt.xticks(range(len(df['Class'].unique())), df.Class.unique())
+
+# Set plot title and labels
+plt.title("Frequency by observation number")
+plt.xlabel("Class")
+plt.ylabel("Number of Observations")
+
+# Display the pie chart
+plt.show()
+----------------------------------------------------------
+normal_data = df[df['Class'] == 0]
+fraud_data = df[df['Class'] == 1]
+--------------------------------------------------------
+train_data, _ = train_test_split(normal_data, test_size=0.2, random_state=42)
+------------------------------------------------------
+print(test_data)
+-----------------------------------------------------
+# Define the autoencoder model
+input_dim = train_data.shape[1] - 1 # Exclude the 'Class' column
+encoding_dim = 16
+
+input_layer = Input(shape=(input_dim,))
+encoded = Dense(encoding_dim, activation='relu')(input_layer)
+decoded = Dense(input_dim, activation='sigmoid')(encoded)
+
+# autoencoder model 
+autoencoder = Model(input_layer, decoded)
+-----------------------------------------------------
+autoencoder.compile(optimizer='adam',loss='mean_squared_error',metrics=['accuracy'])
+-----------------------------------------------------
+autoencoder.fit(train_data.drop(['Class'], axis=1), train_data.drop(['Class'],axis=1), epochs=10, batch_size=256, shuffle=True, validation_split=0.2)
+----------------------------------------------------
+reconstructed_normal = autoencoder.predict(normal_data.drop(['Class'], axis=1))
+reconstructed_fraud = autoencoder.predict(fraud_data.drop(['Class'], axis=1))
+-------------------------------------------------
+# Calculate the mean squared error (reconstruction error)
+mse_normal = np.mean(np.square(normal_data.drop(['Class'], axis=1).values - reconstructed_normal))
+mse_fraud = np.mean(np.square(fraud_data.drop(['Class'], axis=1).values - reconstructed_fraud))
+-------------------------------------------------
+threshold = mse_normal + 3 * np.std(mse_normal)
+predicted_labels = np.where(mse_fraud > threshold, 1, 0)
+---------------------------------------------------
+accuracy = np.sum(predicted_labels == 1) / len(fraud_data)
+print(f"Anomaly Detection Accuracy: {accuracy}")
+----------------------------------------------------
+plt.hist(mse_normal, bins=50, label='Normal', alpha=0.5, color='blue')
+plt.hist(mse_fraud, bins=50, label='Fraud', alpha=0.5, color='red')
+plt.axvline(threshold, color='black', linestyle='dashed', linewidth=2,label='Threshold')
+plt.xlabel('Mean Squared Error')
+plt.ylabel('Frequency')
+plt.legend()
+plt.show()
+----------------------------------------------------
+---------------------------------------------------
+print(predicted_labels.shape)
+print(fraud_data.shape)
+conf_matrix = confusion_matrix(fraud_data['Class'], predicted_labels)
+# Print the confusion matrix
+print("Confusion Matrix:")
+print(conf_matrix)
+# Calculate precision, recall, and F1 score
+precision = conf_matrix[1, 1] / (conf_matrix[1, 1] + conf_matrix[0, 1])
+recall = conf_matrix[1, 1] / (conf_matrix[1, 1] + conf_matrix[1, 0])
+f1 = 2 * (precision * recall) / (precision + recall)
+print(f"Precision: {precision}")
+print(f"Recall: {recall}")
+print(f"F1 Score: {f1}")
+-----------------------------------------------------
