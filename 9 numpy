@@ -1,0 +1,123 @@
+import numpy as np
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def tanh(x):
+    return np.tanh(x)
+
+def softmax(x):
+    exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+    return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
+
+def rnn_forward(x, h_prev, Wx, Wh, Wy, bh, by):
+    h_t = tanh(np.dot(x, Wx) + np.dot(h_prev, Wh) + bh)
+    y_t = softmax(np.dot(h_t, Wy) + by)
+    return h_t, y_t
+
+def rnn_backward(dy, h, x, h_prev, Wx, Wh, Wy, bh, by):
+    dh = (1 - h**2) * (dy.dot(Wy.T) + h_prev.dot(Wh.T))
+    dWx = x.T.dot(dh)
+    dWh = h_prev.T.dot(dh)
+    dWy = h.T.dot(dy)
+    dbh = np.sum(dh, axis=0)
+    dby = np.sum(dy, axis=0)
+    return dWx, dWh, dWy, dbh, dby, dh
+
+def train_rnn(X, Y, epochs=100, learning_rate=0.01):
+    np.random.seed(42)
+
+    input_size = X.shape[1]
+    hidden_size = 64
+    output_size = Y.shape[1]
+
+    Wx = np.random.randn(input_size, hidden_size)
+    Wh = np.random.randn(hidden_size, hidden_size)
+    Wy = np.random.randn(hidden_size, output_size)
+    bh = np.zeros((1, hidden_size))
+    by = np.zeros((1, output_size))
+
+    for epoch in range(epochs):
+        h_prev = np.zeros((1, hidden_size))
+
+        for t in range(X.shape[0]):
+            x_t = X[t].reshape(1, -1)
+            y_t = Y[t].reshape(1, -1)
+
+            # Forward pass
+            h_t, y_pred = rnn_forward(x_t, h_prev, Wx, Wh, Wy, bh, by)
+
+            # Compute loss
+            loss = -np.sum(y_t * np.log(y_pred))
+
+            # Backward pass
+            dy = y_pred - y_t
+            dWx, dWh, dWy, dbh, dby, dh_prev = rnn_backward(dy, h_t, x_t, h_prev, Wx, Wh, Wy, bh, by)
+
+            # Update weights
+            Wx -= learning_rate * dWx
+            Wh -= learning_rate * dWh
+            Wy -= learning_rate * dWy
+            bh -= learning_rate * dbh
+            by -= learning_rate * dby
+
+            h_prev = h_t
+
+        if epoch % 10 == 0:
+            print(f"Epoch {epoch}, Loss: {loss}")
+
+    return Wx, Wh, Wy, bh, by
+
+# Dummy data
+X = np.random.rand(100, 10)
+Y = np.random.randint(0, 2, size=(100, 2))
+
+# One-hot encode Y
+Y_one_hot = np.zeros((Y.shape[0], 2))
+Y_one_hot[np.arange(Y.shape[0]), Y[:, 0]] = 1
+
+# Training the RNN
+Wx, Wh, Wy, bh, by = train_rnn(X, Y_one_hot)
+
+# Note: This is a very basic example and may not be suitable for complex tasks.
+# In practice, it's recommended to use deep learning frameworks like TensorFlow or PyTorch
+# for building and training recurrent neural networks due to their efficiency and ease of use.
+--------------------------------------------------------------------------------------------------------
+import numpy as np
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+# ... (previous code remains unchanged)
+
+def predict_rnn(X, Wx, Wh, Wy, bh, by):
+    h_prev = np.zeros((1, Wh.shape[0]))
+    predictions = []
+
+    for t in range(X.shape[0]):
+        x_t = X[t].reshape(1, -1)
+        h_t, y_pred = rnn_forward(x_t, h_prev, Wx, Wh, Wy, bh, by)
+        predictions.append(np.argmax(y_pred))
+
+        h_prev = h_t
+
+    return np.array(predictions)
+
+# Dummy test data
+X_test = np.random.rand(20, 10)
+Y_test = np.random.randint(0, 2, size=(20, 2))
+
+# One-hot encode Y_test
+Y_test_one_hot = np.zeros((Y_test.shape[0], 2))
+Y_test_one_hot[np.arange(Y_test.shape[0]), Y_test[:, 0]] = 1
+
+# Make predictions
+predictions = predict_rnn(X_test, Wx, Wh, Wy, bh, by)
+
+# Calculate accuracy
+accuracy = accuracy_score(Y_test[:, 0], predictions)
+print(f"Accuracy: {accuracy}")
+
+# Calculate confusion matrix
+conf_matrix = confusion_matrix(Y_test[:, 0], predictions)
+print("Confusion Matrix:")
+print(conf_matrix)
+--------------------------------------------------------------------------------------
